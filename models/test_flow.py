@@ -29,16 +29,6 @@ def test_model_flow():
         features_raw = original_data.iloc[[i]].drop('price', axis=1)
         prediction = predict_price(features_raw)
         print(f"Sample {i+1}, Prediction: {prediction[0]}")
-
-
-    # print("Making predictions on the first ten samples of the dataset...")
-    # for i in range(10):
-    #     # Extract the features for prediction
-    #     features = original_data.drop('price', axis=1).iloc[i]  # Adjust based on how your data is structured
-    #     # Reshape the features for prediction
-    #     features_reshaped = features.values.reshape(1, -1)
-    #     prediction = predict_price(features_reshaped)
-    #     print(f"Sample {i+1}, Prediction: {prediction[0]}")
         
     print("Test flow completed.")
 

@@ -1,9 +1,11 @@
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import mean_squared_error, r2_score
-from data_preprocessing import preprocess_data  # Adjust import path as needed
+# from data_preprocessing import preprocess_data  # Adjust import path as needed
+from .data_preprocessing import preprocess_data
 import joblib
 import numpy as np
+import pandas as pd
 
 def train_and_save_model():
     # Assuming preprocess_data() function returns a preprocessed features matrix X and labels vector y
@@ -52,14 +54,23 @@ def train_and_save_model():
 # Assuming 'preprocessor' is your ColumnTransformer instance from training
 # You need to save and load this preprocessor along with your model
 
+
+# Assuming the preprocessor and model are saved in the 'models/' directory.
+PREPROCESSOR_PATH = 'models/preprocessor.joblib'
+MODEL_PATH = 'models/trained_model.joblib'
+
+def load_resources():
+    preprocessor = joblib.load(PREPROCESSOR_PATH)
+    model = joblib.load(MODEL_PATH)
+    return preprocessor, model
+
 def predict_price(features_raw):
-    # Load the saved preprocessor and model
-    preprocessor = joblib.load('models/preprocessor.joblib')
-    model = joblib.load('models/trained_model.joblib')
+    preprocessor, model = load_resources()
     
-    # Apply preprocessing to the raw features
+    # Transform features_raw into a DataFrame if it's not already
+    if not isinstance(features_raw, pd.DataFrame):
+        features_raw = pd.DataFrame(features_raw, index=[0])
+    
     features_preprocessed = preprocessor.transform(features_raw)
-    
-    # Make a prediction with the preprocessed features
     prediction = model.predict(features_preprocessed)
     return prediction
