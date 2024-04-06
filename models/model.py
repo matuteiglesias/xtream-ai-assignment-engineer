@@ -49,11 +49,17 @@ def train_and_save_model():
     # Optionally return the metrics for external use
     return rmse, r2
 
-def load_model():
-    model = joblib.load('models/trained_model.joblib')
-    return model
+# Assuming 'preprocessor' is your ColumnTransformer instance from training
+# You need to save and load this preprocessor along with your model
 
-def predict_price(features):
-    model = load_model()
-    prediction = model.predict([features])
+def predict_price(features_raw):
+    # Load the saved preprocessor and model
+    preprocessor = joblib.load('models/preprocessor.joblib')
+    model = joblib.load('models/trained_model.joblib')
+    
+    # Apply preprocessing to the raw features
+    features_preprocessed = preprocessor.transform(features_raw)
+    
+    # Make a prediction with the preprocessed features
+    prediction = model.predict(features_preprocessed)
     return prediction

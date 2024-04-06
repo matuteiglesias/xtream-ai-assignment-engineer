@@ -4,6 +4,8 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder, PowerTransforme
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
+import joblib
+
 
 def preprocess_data():
     # Load data
@@ -38,6 +40,7 @@ def preprocess_data():
     
     # Apply preprocessing
     X_preprocessed = preprocessor.fit_transform(X)
+    joblib.dump(preprocessor, 'models/preprocessor.joblib')
     
     # Optionally, convert the output back to a DataFrame
     columns_transformed = (numeric_features + 
