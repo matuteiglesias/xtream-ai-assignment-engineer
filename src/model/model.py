@@ -1,11 +1,31 @@
+import sys
+sys.path.append('/home/matias/repos/xtream-ai-assignment-engineer/src')
+
+from data.data_preprocessing import preprocess_data
+
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import mean_squared_error, r2_score
 # from data_preprocessing import preprocess_data  # Adjust import path as needed
-from .data_preprocessing import preprocess_data
 import joblib
 import numpy as np
 import pandas as pd
+
+
+import os
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PREPROCESSOR_PATH = os.path.join(BASE_DIR, 'model', 'models', 'preprocessor.joblib')
+MODEL_PATH = os.path.join(BASE_DIR, 'model', 'models', 'trained_model.joblib')
+
+print(BASE_DIR, PREPROCESSOR_PATH, MODEL_PATH)
+
+# # Assuming the preprocessor and model are saved in the 'models/' directory.
+# PREPROCESSOR_PATH = 'src/model/models/preprocessor.joblib'
+# MODEL_PATH = 'src/model/models/trained_model.joblib'
+
+# preprocessor = joblib.load(PREPROCESSOR_PATH)
+
 
 def train_and_save_model():
     # Assuming preprocess_data() function returns a preprocessed features matrix X and labels vector y
@@ -55,17 +75,13 @@ def train_and_save_model():
 # You need to save and load this preprocessor along with your model
 
 
-# Assuming the preprocessor and model are saved in the 'models/' directory.
-PREPROCESSOR_PATH = 'models/preprocessor.joblib'
-MODEL_PATH = 'models/trained_model.joblib'
+# # Assuming the preprocessor and model are saved in the 'models/' directory.
+# PREPROCESSOR_PATH = 'src/model/models/preprocessor.joblib'
+# MODEL_PATH = 'src/model/models/trained_model.joblib'
 
-def load_resources():
+def predict_price(features_raw, PREPROCESSOR_PATH, MODEL_PATH):
     preprocessor = joblib.load(PREPROCESSOR_PATH)
     model = joblib.load(MODEL_PATH)
-    return preprocessor, model
-
-def predict_price(features_raw):
-    preprocessor, model = load_resources()
     
     # Transform features_raw into a DataFrame if it's not already
     if not isinstance(features_raw, pd.DataFrame):
@@ -74,3 +90,21 @@ def predict_price(features_raw):
     features_preprocessed = preprocessor.transform(features_raw)
     prediction = model.predict(features_preprocessed)
     return prediction
+
+
+
+def retrain_model():
+    # Train and save the model
+    rmse, r2 = train_and_save_model()
+    return f"Model retrained. RMSE: {rmse}, R^2: {r2}"
+
+
+# def get_models():
+#     return ['trained_model.joblib']
+
+import os
+
+def get_models():
+    model_dir = os.path.join(os.path.dirname(__file__), 'models')
+    models = [file for file in os.listdir(model_dir) if file.endswith('.joblib')]
+    return models

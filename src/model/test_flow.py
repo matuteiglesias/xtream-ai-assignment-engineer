@@ -1,5 +1,5 @@
 import pandas as pd
-from data_preprocessing import preprocess_data
+from data.data_preprocessing import preprocess_data
 from model import train_and_save_model, predict_price
 # Adjust the import statement 'from your_model_module' to match the actual name of your Python file containing the model functions
 
