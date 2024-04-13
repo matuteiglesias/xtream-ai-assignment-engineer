@@ -1,0 +1,56 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diamond Price Prediction</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/app.js" defer></script>
+</head>
+<body>
+
+
+    <div class="container">
+        <h1>Diamond Price Predictor</h1>
+
+
+        <form id="diamond-form">
+            Carat: <input type="number" name="carat" required value="0.3"><br>
+            Cut: <select name="cut">
+                    <option value="Ideal" selected>Ideal</option>
+                    <option value="Premium">Premium</option>
+                    <option value="Good">Good</option>
+                </select><br>
+            Color: <input type="text" name="color" required value="G"><br>
+            Clarity: <input type="text" name="clarity" required value="SI1"><br>
+            Depth: <input type="number" name="depth" step="0.1" required value="62.0"><br>
+            Table: <input type="number" name="table" step="0.1" required value="56.0"><br>
+            X: <input type="number" name="x" step="0.01" required value="4.37"><br>
+            Y: <input type="number" name="y" step="0.01" required value="4.34"><br>
+            Z: <input type="number" name="z" step="0.01" required value="2.69"><br>
+            <button type="submit">Predict Price</button>
+        </form>
+
+        
+
+        <div>
+            Select Model: <select id="model-select">
+                <option>Loading models...</option>
+            </select><br>
+        </div>
+
+
+
+        <div id="model-stats" style="display:none;">
+            RMSE: <span id="rmse">-</span><br>
+            MAE: <span id="mae">-</span>
+        </div>
+
+        <button onclick="retrainModel()">Generate New Data and Retrain</button>
+
+    </div>
+</body>
+</html>
+
