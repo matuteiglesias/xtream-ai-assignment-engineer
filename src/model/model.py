@@ -2,7 +2,7 @@ import sys
 sys.path.append('/home/matias/repos/xtream-ai-assignment-engineer/src')
 
 from data.data_preprocessing import preprocess_data
-
+from sklearn.linear_model import SGDRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import mean_squared_error, r2_score
@@ -27,7 +27,7 @@ print(BASE_DIR, PREPROCESSOR_PATH, MODEL_PATH)
 # preprocessor = joblib.load(PREPROCESSOR_PATH)
 
 
-def train_and_save_model():
+def train_and_save_model_RF():
     # Assuming preprocess_data() function returns a preprocessed features matrix X and labels vector y
     X, y = preprocess_data()
     
@@ -67,6 +67,47 @@ def train_and_save_model():
     
     # Save the best model
     joblib.dump(best_model, 'models/trained_model.joblib')
+
+    # Optionally return the metrics for external use
+    return rmse, r2
+
+
+def train_and_save_model():
+    # Assuming preprocess_data() function returns a preprocessed features matrix X and labels vector y
+    X, y = preprocess_data()
+
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    # Initialize the SGDRegressor with specified hyperparameters
+    model = SGDRegressor(
+        random_state=42,
+        loss='squared_error',
+        penalty='l1',
+        alpha=0.001,
+        l1_ratio=0.1,
+        learning_rate='adaptive',
+        max_iter=300,
+        tol=1e-3,
+        eta0=0.01
+    )
+    
+    # Fit the model to the training data
+    model.fit(X_train, y_train)
+    
+    # Predict on the testing set
+    y_pred = model.predict(X_test)
+    
+    # Calculate metrics
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test, y_pred)
+    
+    print(f"Root Mean Squared Error: {rmse}")
+    print(f"R^2 Score: {r2}")
+    
+    # Save the model
+    joblib.dump(model, 'model/models/trained_sgd_model.joblib')
 
     # Optionally return the metrics for external use
     return rmse, r2
