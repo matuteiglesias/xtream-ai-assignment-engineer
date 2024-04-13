@@ -60,7 +60,7 @@ def predict():
     prediction = model.predict(features_preprocessed)
 
     # Return the prediction in JSON format
-    return jsonify({'prediction': prediction.tolist()})  # Convert prediction array to list if necessary
+    return jsonify({'price': prediction.tolist()})  # Convert prediction array to list if necessary
 
 
 
@@ -87,7 +87,7 @@ def models():
 #     model_list = get_models()
 #     return jsonify({'models': model_list})
 
-@api.route('/retrain', methods=['POST'])
-def retrain():
-    result = retrain_model()
-    return jsonify({'result': result})
+# @api.route('/retrain', methods=['POST'])
+# def retrain():
+#     result = retrain_model()
+#     return jsonify({'result': result})

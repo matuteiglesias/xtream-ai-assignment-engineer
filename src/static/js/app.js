@@ -44,12 +44,27 @@ document.getElementById('diamond-form').onsubmit = function(event) {
   
   
 
-  function retrainModel() {   // Retrain the selected model
-    fetch('/retrain', { method: 'POST' })
-      .then(response => response.json())
-      .then(data => {
-        alert('Model retrained!');
-        fetchModels();  // Refresh model list and stats
-      });
-  }
+  // function retrainModel() {   // Retrain the selected model
+  //   fetch('/api/retrain', { method: 'POST' })
+  //     .then(response => response.json())
+  //     .then(data => {
+  //       alert('Model retrained!');
+  //       fetchModels();  // Refresh model list and stats
+  //     }).catch(error => console.error('Error during retraining:', error));
+  // }
   
+
+  function retrainModel() {
+    // Send a POST request to trigger data addition and retraining
+    fetch('/api/retrain', { 
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({label: 'New', proportionFactor: 2})
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Model retrained with new data!');
+        fetchModels(); // Refresh model list and stats
+    })
+    .catch(error => console.error('Error during retraining:', error));
+}
