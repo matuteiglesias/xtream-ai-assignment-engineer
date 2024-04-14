@@ -91,3 +91,24 @@ def models():
 # def retrain():
 #     result = retrain_model()
 #     return jsonify({'result': result})
+
+
+
+
+# @api.route('/api/plot-data', methods=['GET'])
+# def plot_data():
+#     model_name = request.args.get('model', 'trained_sgd_model')  # Default model name
+#     predictions_file = f'./data/diamonds/predictions_{model_name}.csv'
+    
+#     try:
+#         if not os.path.exists(predictions_file):
+#             raise FileNotFoundError(f"No predictions file found for model '{model_name}'.")
+        
+#         # Load the saved predictions
+#         predictions_data = pd.read_csv(predictions_file)
+#         y_test = predictions_data['Actual Prices'].tolist()
+#         y_pred = predictions_data['Predicted Prices'].tolist()
+        
+#         return jsonify({'actual': y_test, 'predicted': y_pred})
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500

@@ -8,6 +8,8 @@
     <title>Diamond Price Prediction</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="/static/js/app.js" defer></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
 </head>
 <body>
 
@@ -49,7 +51,16 @@
             MAE: <span id="mae">-</span>
         </div>
 
-        <button onclick="retrainModel()">Generate New Data and Retrain</button>
+
+
+        <div id="plotDiv" style="width:600px;height:400px;"></div>
+        <!-- Other content -->
+        
+        <button id="retrainButton" onclick="retrainModel()">Generate New Data and Retrain</button>
+    
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <script src="path_to_your_script.js"></script>
+
 
     </div>
 </body>

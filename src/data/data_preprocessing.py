@@ -30,7 +30,7 @@ def initialize_default_preprocessor():
 
     categorical_transformer = Pipeline([
         ('imputer', SimpleImputer(strategy='most_frequent')),
-        ('encoder', OneHotEncoder())
+        ('encoder', OneHotEncoder(handle_unknown='ignore'))
     ])
 
     preprocessor = ColumnTransformer([
@@ -42,16 +42,16 @@ def initialize_default_preprocessor():
     joblib.dump(preprocessor, './model/models/default_preprocessor.joblib')
     return preprocessor
 
-def update_preprocessor_with_new_data(new_data):
-    existing_data = pd.read_csv('./data/diamonds/diamonds.csv')
-    combined_data = pd.concat([existing_data, new_data])
+# def update_preprocessor_with_new_data(new_data):
+#     existing_data = pd.read_csv('./data/diamonds/diamonds.csv')
+#     combined_data = pd.concat([existing_data, new_data])
     
-    preprocessor = joblib.load('./model/models/default_preprocessor.joblib')
-    preprocessor.fit(combined_data.drop('price', axis=1))
+#     preprocessor = joblib.load('./model/models/default_preprocessor.joblib')
+#     preprocessor.fit(combined_data.drop('price', axis=1))
     
-    new_preprocessor_path = './model/models/updated_preprocessor_{}.joblib'.format(datetime.now().strftime('%Y%m%d_%H%M%S'))
-    joblib.dump(preprocessor, new_preprocessor_path)
-    return preprocessor
+#     new_preprocessor_path = './model/models/updated_preprocessor_{}.joblib'.format(datetime.now().strftime('%Y%m%d_%H%M%S'))
+#     joblib.dump(preprocessor, new_preprocessor_path)
+#     return preprocessor
 
 
 import os

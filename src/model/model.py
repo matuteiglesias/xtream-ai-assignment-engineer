@@ -72,6 +72,35 @@ def train_and_save_model_RF():
     return rmse, r2
 
 
+
+# Assuming 'preprocessor' is your ColumnTransformer instance from training
+# You need to save and load this preprocessor along with your model
+
+
+# # Assuming the preprocessor and model are saved in the 'models/' directory.
+# PREPROCESSOR_PATH = 'src/model/models/preprocessor.joblib'
+# MODEL_PATH = 'src/model/models/trained_model.joblib'
+
+def predict_price(features_raw, PREPROCESSOR_PATH, MODEL_PATH):
+    preprocessor = joblib.load(PREPROCESSOR_PATH)
+    model = joblib.load(MODEL_PATH)
+    
+    # Transform features_raw into a DataFrame if it's not already
+    if not isinstance(features_raw, pd.DataFrame):
+        features_raw = pd.DataFrame(features_raw, index=[0])
+    
+    features_preprocessed = preprocessor.transform(features_raw)
+    prediction = model.predict(features_preprocessed)
+    return prediction
+
+
+
+def retrain_model():
+    # Train and save the model
+    rmse, r2 = train_and_save_model()
+    return f"Model retrained. RMSE: {rmse}, R^2: {r2}"
+
+
 def train_and_save_model():
     # Assuming preprocess_data() function returns a preprocessed features matrix X and labels vector y
     X, y = preprocess_data()
@@ -112,32 +141,6 @@ def train_and_save_model():
     # Optionally return the metrics for external use
     return rmse, r2
 
-# Assuming 'preprocessor' is your ColumnTransformer instance from training
-# You need to save and load this preprocessor along with your model
-
-
-# # Assuming the preprocessor and model are saved in the 'models/' directory.
-# PREPROCESSOR_PATH = 'src/model/models/preprocessor.joblib'
-# MODEL_PATH = 'src/model/models/trained_model.joblib'
-
-def predict_price(features_raw, PREPROCESSOR_PATH, MODEL_PATH):
-    preprocessor = joblib.load(PREPROCESSOR_PATH)
-    model = joblib.load(MODEL_PATH)
-    
-    # Transform features_raw into a DataFrame if it's not already
-    if not isinstance(features_raw, pd.DataFrame):
-        features_raw = pd.DataFrame(features_raw, index=[0])
-    
-    features_preprocessed = preprocessor.transform(features_raw)
-    prediction = model.predict(features_preprocessed)
-    return prediction
-
-
-
-def retrain_model():
-    # Train and save the model
-    rmse, r2 = train_and_save_model()
-    return f"Model retrained. RMSE: {rmse}, R^2: {r2}"
 
 
 # def get_models():
