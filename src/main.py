@@ -1,110 +1,44 @@
-from flask import Flask, render_template, jsonify
-from api.routes import api  # Make sure this is importing the Blueprint named 'api'
+from flask import Flask, jsonify, request, render_template
 import os
 import tempfile
 import atexit
-import joblib
-from sklearn.linear_model import SGDRegressor
-
-
-app = Flask(__name__, static_folder='static')
-
-
-# Temporary directory for session models
-temp_dir = tempfile.mkdtemp()
-# Register cleanup to run when the app is terminated
-atexit.register(lambda: os.rmdir(temp_dir))
-
-
-
-from flask import Flask, request, jsonify
 import pandas as pd
 import joblib
-
-app = Flask(__name__)
-
 from datetime import datetime
-
-# @app.route('/api/retrain', methods=['POST'])
-# def retrain():
-#     # Load existing data
-#     data = pd.read_csv('./data/diamonds/diamonds.csv');
-#     if 'Label' not in data.columns:
-#         data['Label'] = 'Standard'
-    
-#     # Get details from request
-#     details = request.get_json()
-#     label = details.get('label', 'New')
-#     proportion_factor = details.get('proportionFactor', 2)
-
-#     # Add new batch of data
-#     new_data = add_batch_features(data, batch_size=100, label=label, proportion_factor=proportion_factor, save=True)
-#     data = pd.concat([data, new_data]).reset_index(drop=True)
-
-#     # Update the preprocessor with the new batch of data
-#     # preprocessor = update_preprocessor_with_new_data(data)
-
-#     preprocessor_path = './model/models/default_preprocessor.joblib'
-#     preprocessor = joblib.load(preprocessor_path)
-
-#     # Correctly access the encoder within the pipeline of the column transformer
-#     categorical_features = ['cut', 'color', 'clarity', 'Label']
-    
-#     # Accessing the correct pipeline and then the encoder
-#     cat_pipeline = preprocessor.named_transformers_['cat']
-#     encoder = cat_pipeline.named_steps['encoder']  # Correctly reference the encoder step in the pipeline
-    
-#     # Fitting the encoder with new data
-#     encoder.fit(data[categorical_features])
-
-#     # Save the updated preprocessor with timestamp in filename
-#     processor_file_name = './model/models/preprocessor_{}.joblib'.format(datetime.now().strftime('%Y%m%d_%H%M%S'))
-#     joblib.dump(preprocessor, processor_file_name)
-#     print(processor_file_name)
-
-
-
-#     # Retrain the model with the updated preprocessor and data
-#     print("Retraining model...")
-#     print(data.iloc[:, -1].value_counts())
-
-#     # model = train_model(data, preprocessor)
-#     # def train_model(data, preprocessor):
-
-#     # Example model training with preprocessed data
-#     X = data.drop('price', axis=1)
-#     y = data['price']
-#     X_preprocessed = preprocessor.transform(X)
-
-#     model = SGDRegressor(random_state=42, 
-#                          loss='squared_error',
-#                          penalty='l1',
-#                          alpha=0.001,
-#                          l1_ratio=0.1,
-#                          learning_rate='adaptive',
-#                          max_iter=300,
-#                          tol=1e-3,
-#                          eta0=0.01)
-    
-#     model.fit(X_preprocessed, y)
-
-
-#     model_path = f'./model/models/trained_model_{datetime.now().strftime("%Y%m%d_%H%M%S")}.joblib'
-#     joblib.dump(model, model_path)
-
-#     return jsonify({"message": "Data added and model retrained", "modelPath": model_path})
-
-
-
-from sklearn.pipeline import Pipeline
 from sklearn.linear_model import SGDRegressor
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
-from datetime import datetime
-import joblib
-import pandas as pd
-from flask import jsonify, request
+from flask_swagger_ui import get_swaggerui_blueprint
+
+from api.routes import api  # Importing the Blueprint named 'api'
+
+# Initialize Flask application
+app = Flask(__name__, static_folder='static')
+
+# Swagger UI configuration
+SWAGGER_URL = '/swagger'  # URL for exposing Swagger UI (without trailing '/')
+API_URL = '/static/swagger.yaml'  # URL for Swagger spec
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={
+        'app_name': "Diamond Price Prediction API"
+    }
+)
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+app.register_blueprint(api, url_prefix='/api')  # Register the API Blueprint
+
+# Temporary directory for session models
+temp_dir = tempfile.mkdtemp()
+
+# Cleanup: Function to remove the temporary directory when the app is terminated
+def cleanup_temp_dir():
+    os.rmdir(temp_dir)
+
+atexit.register(cleanup_temp_dir)
+
 
 @app.route('/api/retrain', methods=['POST'])
 def retrain():
@@ -193,61 +127,6 @@ def retrain():
 
 
 
-# def update_preprocessor_with_new_data(data):
-#     preprocessor_path = './model/models/default_preprocessor.joblib'
-#     preprocessor = joblib.load(preprocessor_path)
-
-#     # Assuming categorical features are known
-#     categorical_features = ['cut', 'color', 'clarity', 'Label']  # Adjust according to your actual categorical columns
-#     preprocessor.named_transformers_['cat'].encoder.fit(data[categorical_features])
-
-#     # Save the updated preprocessor
-#     joblib.dump(preprocessor, preprocessor_path)
-#     return preprocessor
-
-
-# def update_preprocessor_with_new_data(data):
-#     preprocessor_path = './model/models/default_preprocessor.joblib'
-#     preprocessor = joblib.load(preprocessor_path)
-
-#     # Correctly access the encoder within the pipeline of the column transformer
-#     categorical_features = ['cut', 'color', 'clarity', 'Label']
-    
-#     # Accessing the correct pipeline and then the encoder
-#     cat_pipeline = preprocessor.named_transformers_['cat']
-#     encoder = cat_pipeline.named_steps['encoder']  # Correctly reference the encoder step in the pipeline
-    
-#     # Fitting the encoder with new data
-#     encoder.fit(data[categorical_features])
-
-#     # Save the updated preprocessor with timestamp in filename
-#     processor_file_name = './model/models/preprocessor_{}.joblib'.format(datetime.now().strftime('%Y%m%d_%H%M%S'))
-#     joblib.dump(preprocessor, processor_file_name)
-#     print(processor_file_name)
-
-#     return preprocessor
-
-
-
-# def train_model(data, preprocessor):
-#     # Example model training with preprocessed data
-#     X = data.drop('price', axis=1)
-#     y = data['price']
-#     X_preprocessed = preprocessor.transform(X)
-
-#     model = SGDRegressor(random_state=42, 
-#                          loss='squared_error',
-#                          penalty='l1',
-#                          alpha=0.001,
-#                          l1_ratio=0.1,
-#                          learning_rate='adaptive',
-#                          max_iter=300,
-#                          tol=1e-3,
-#                          eta0=0.01)
-    
-#     model.fit(X_preprocessed, y)
-#     return model
-
 
 def add_batch_features(data, batch_size, label, proportion_factor, save=False):
     new_data = data.sample(n=batch_size, random_state=42).reset_index(drop=True)
@@ -283,15 +162,6 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 
-
-# @app.route('/')
-# def home():
-#     return "Welcome to the Diamond Price Prediction API!"
-
-
-# from flask import Flask, jsonify
-# import pandas as pd
-# import joblib  # For loading the model
 
 
 def save_model_predictions(model_name):
