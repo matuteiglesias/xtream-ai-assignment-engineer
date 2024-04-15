@@ -1,0 +1,175 @@
+swagger: "2.0"
+info:
+  title: Diamond Price Prediction API
+  version: "1.0.0"
+  description: API for predicting diamond prices based on their features.
+host: localhost:5000
+basePath: /api
+schemes:
+  - http
+
+paths:
+  /predict:
+    post:
+      summary: "Predict the price of a diamond"
+      description: "Returns a price prediction for the provided diamond features using a specified model."
+      operationId: "predictPrice"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Diamond features and model name for price prediction"
+          required: true
+          schema:
+            $ref: "#/definitions/Diamond"
+      responses:
+        200:
+          description: "Price prediction returned successfully"
+          schema:
+            type: object
+            properties:
+              price:
+                type: number
+                format: float
+        404:
+          description: "Model not found"
+        500:
+          description: "Error with the prediction request"
+  /models:
+    get:
+      summary: "List available models"
+      description: "Provides a list of all models available for prediction, both from permanent and temporary storage."
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "A list of available models"
+          schema:
+            type: object
+            properties:
+              models:
+                type: array
+                items:
+                  type: string
+  /retrain:
+    post:
+      summary: "Retrain the model with new data"
+      description: "Retrains the model based on new sample data and updates the model registry."
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Parameters to generate new data for retraining"
+          required: true
+          schema:
+            $ref: "#/definitions/RetrainRequest"
+      responses:
+        200:
+          description: "Model retrained successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              modelPath:
+                type: string
+              modelName:
+                type: string
+        500:
+          description: "Error during retraining"
+  /get-model-info:
+    get:
+      summary: "Get detailed information about registered models"
+      description: "Fetches details about all models registered in MLflow, including their metrics and versions."
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Detailed information about all models"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/ModelInfo"
+definitions:
+  Diamond:
+    type: "object"
+    required:
+      - "carat"
+      - "cut"
+      - "color"
+      - "clarity"
+      - "depth"
+      - "table"
+      - "x"
+      - "y"
+      - "z"
+      - "model"
+    properties:
+      carat:
+        type: "number"
+        format: "float"
+        default: 1
+      cut:
+        type: "string"
+        default: "Ideal"
+      color:
+        type: "string"
+        default: "G"
+      clarity:
+        type: "string"
+        default: "SI1"
+      depth:
+        type: "number"
+        format: "float"
+        default: 62.0
+      table:
+        type: "number"
+        format: "float"
+        default: 56.0
+      x:
+        type: "number"
+        format: "float"
+        default: 6
+      y:
+        type: "number"
+        format: "float"
+        default: 6
+      z:
+        type: "number"
+        format: "float"
+        default: 4
+      model:
+        type: "string"
+        default: "trained_sgd_model.joblib"
+  RetrainRequest:
+    type: "object"
+    properties:
+      label:
+        type: "string"
+        default: "New"
+      proportionFactor:
+        type: "number"
+        format: "float"
+        default: 2
+  ModelInfo:
+    type: "object"
+    properties:
+      name:
+        type: "string"
+      version:
+        type: "string"
+      run_id:
+        type: "string"
+      status:
+        type: "string"
+      metrics:
+        type: "object"
+        additionalProperties:
+          type: "number"
+
