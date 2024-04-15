@@ -40,6 +40,7 @@ def cleanup_temp_dir():
 atexit.register(cleanup_temp_dir)
 
 
+
 @app.route('/api/retrain', methods=['POST'])
 def retrain():
     print("Loading existing data...")
@@ -154,9 +155,6 @@ def cleanup():
 @app.route('/')
 def index():
     return render_template('index.html')
-
-# Register the Blueprint with the app instance
-app.register_blueprint(api, url_prefix='/api')
 
 if __name__ == '__main__':
     app.run(debug=True)
