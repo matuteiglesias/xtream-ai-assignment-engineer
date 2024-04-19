@@ -90,6 +90,13 @@ def view_logs():
     return jsonify({"log": log_content}), 200
 
 
+# @app.before_request
+# def log_request_info():
+#     print('Headers:', request.headers)
+#     print('Body:', request.get_data())
+#     print('URL:', request.url)
+#     print('Method:', request.method)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
