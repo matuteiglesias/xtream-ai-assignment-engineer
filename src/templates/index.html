@@ -13,6 +13,12 @@
         <h1>Diamond Price Predictor</h1>
         <div class="grid-container">
             <div class="parameters-section">
+
+
+
+                <h2>Diamond Characteristics</h2>
+                <p>Enter the characteristics of the diamond you wish to evaluate and click 'Predict Price'.</p>
+
                 <form id="diamond-form">
                     Carat: <input type="number" name="carat" required value="1"><br>
                     Cut: <select name="cut">
@@ -22,50 +28,107 @@
                         <option value="Good">Good</option>
                         <option value="Fair">Fair</option>
                     </select><br>
-                    Color: <input type="text" name="color" required value="G"><br>
-                    Clarity: <input type="text" name="clarity" required value="SI1"><br>
+                    Color: <select name="color" required>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="G" selected>G</option>
+                        <option value="H">H</option>
+                        <option value="I">I</option>
+                        <option value="J">J</option>
+                    </select><br>
+                    Clarity: <select name="clarity" required>
+                        <option value="I1">I1</option>
+                        <option value="IF">IF</option>
+                        <option value="SI1" selected>SI1</option>
+                        <option value="SI2">SI2</option>
+                        <option value="VS1">VS1</option>
+                        <option value="VS2">VS2</option>
+                        <option value="VVS1">VVS1</option>
+                        <option value="VVS2">VVS2</option>
+                    </select><br>
                     Depth: <input type="number" name="depth" step="0.1" required value="62.0"><br>
                     Table: <input type="number" name="table" step="1" required value="56.0"><br>
-                    X: <input type="number" name="x" step="0.1" required value="6"><br>
-                    Y: <input type="number" name="y" step="0.1" required value="6"><br>
-                    Z: <input type="number" name="z" step="0.1" required value="4"><br>
-                    BATCH: <input type="text" name="batch" required value="Standard"><br>
+
+                    
+                    <div class="dimensions-section">
+                        <label>Dimensions (X, Y, Z):</label>
+                        <div class="dimension-inputs">
+                            <input type="number" id="x" name="x" step="0.1" required value="6" placeholder="X">
+                            <input type="number" id="y" name="y" step="0.1" required value="6" placeholder="Y">
+                            <input type="number" id="z" name="z" step="0.1" required value="4" placeholder="Z">
+                        </div>
+                    </div>
+                    
+
+
+                    BATCH: <input type="text" name="Label" required value="Standard"><br>
                     <button type="submit">Predict Price</button>
                 </form>
             </div>
             <div class="actions-section">
+
+                <h2>Model Operations</h2>
+                <p>Enter a label for the new data batch, adjust the price proportion factor, and specify the number of samples for retraining the model.</p>
+                Label: <input type="text" id="label-input" placeholder="Enter label" value="New"><br>
+                Proportion Factor: <input type="number" id="proportion-factor-input" placeholder="Enter proportion factor" value="2" step="0.1"><br>
+                Number of Samples: <input type="number" id="sample-input" placeholder="Enter number of samples" value="1500"><br>
+                <button id="retrainButton">Generate New Data and Retrain</button>
+
+                <p>Don't forget to select the retrained model in the dropdown menu below to use it for prediction.</p>
                 Select Model: <select id="model-select">
                     <option>Loading models...</option>
                 </select><br>
-                <button id="retrainButton" onclick="retrainModel()">Generate New Data and Retrain</button>
+
             </div>
+            
             <div class="results-section">
-                <div id="model-stats" style="display:none;">
+
+                <div id="plotDiv" style="width:600px;height:400px;">
+                    <h2>Model Assessment</h2>
+                    <p>This plot shows the actual vs. predicted prices on the test set for the newly trained model. Points are colored by their 'Label'.</p>
+                </div>
+
+                <!-- <div id="model-stats" style="display:none;">
                     RMSE: <span id="rmse">-</span><br>
                     MAE: <span id="mae">-</span>
-                </div>
-                <div id="plotDiv" style="width:600px;height:400px;"></div>
+                </div> -->
+
+
+
 
 
                 <div id="model-info-section">
-                    <h3>Model Details</h3>
+                    <h3>Model Metrics</h3>
+                    <p>Below is a table with performance metrics for the trained models.</p>
                     <table id="model-info-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
                                 <th>Version</th>
-                                <th>Status</th>
-                                <th>Run ID</th>
-                                <th>Metrics</th>
+                                <th>MAE</th>
+                                <th>MSE</th>
+                                <th>R2</th>
+                                <th>RMSE</th>
                             </tr>
                         </thead>
                         <tbody id="model-info">
-                            <!-- Model info rows will be added here -->
+                            <!-- Model info rows will be added here dynamically -->
                         </tbody>
                     </table>
                 </div>
-
                 
+
+
+                <!-- New section for API performance testing -->
+                <div class="performance-test-section">
+                    <h2>API Performance Testing</h2>
+                    <button id="testPredictBtn">Test Prediction Performance</button>
+                    <!-- <button id="testRetrainBtn">Test Retrain Performance</button> -->
+                    <div id="performanceResults">
+                        <p id="responseTime"></p>
+                        <p id="throughput"></p>
+                    </div>
+                </div>                
 
 
 
@@ -73,5 +136,6 @@
         </div>
     </div>
     <script src="/static/js/app.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </body>
 </html>
