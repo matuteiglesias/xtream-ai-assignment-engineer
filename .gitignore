@@ -84,11 +84,8 @@ profile_default/
 ipython_config.py
 
 # Ignore all joblib files
-*.joblib
+# *.joblib
 
-
-# Ignore specific data files
-src/data/diamonds/
 
 # pyenv
 .python-version
