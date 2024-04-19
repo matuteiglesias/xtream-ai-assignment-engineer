@@ -18,7 +18,10 @@ ENV FLASK_APP=main.py
 ENV FLASK_RUN_HOST=0.0.0.0
 
 # Run app.py using the Flask CLI
-CMD ["flask", "run"]
+# CMD ["flask", "run"]
+
+# Run as a module
+CMD ["python", "-m", "flask", "run"] 
 
 
 # # Modules Check
