@@ -1,6 +1,6 @@
 # api/routes.py
-import sys
-sys.path.append('/home/matias/repos/xtream-ai-assignment-engineer/src')
+# import sys
+# sys.path.append('/home/matias/repos/xtream-ai-assignment-engineer/src')
 import os
 from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
@@ -8,76 +8,81 @@ from datetime import datetime
 # from model.model import predict_price, retrain_model, get_models
 
 import pandas as pd
-import numpy as np
 import joblib
 
-from sklearn.linear_model import SGDRegressor
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.compose import ColumnTransformer
 
 import mlflow
+import glob
+
+
+from data.data_preprocessing import *
+from model.model import *
+# from ..model.model import *
+
 
 api = Blueprint('api', __name__)
 
+
+
 @api.route('/predict', methods=['POST'])
 def predict():
+    print("Starting prediction endpoint...")
 
     # Assuming JSON data is posted
     data = request.get_json()
+    print(f"Received data: {data}")
+
     model_name = data.get('model')  # Get the model name from the request
+    print(f"Model name received: {model_name}")
 
-    # Construct paths for the model
-    permanent_model_path = os.path.join('model/models', model_name)
-    temp_model_path = os.path.join(current_app.config['TEMP_DIR'], model_name)
+    # Directory where the models and preprocessors are stored
+    models_directory = os.path.join('model', 'models')
+    temp_directory = current_app.config['TEMP_DIR']
+
+    print(f"Model directory: {models_directory}")
+    print(f"Temporary directory: {temp_directory}")
+
+    # Attempt to find the latest preprocessor file
+    preprocessor_files = glob.glob(os.path.join(temp_directory, 'preprocessor_*.joblib'))
+    if not preprocessor_files:  # If no temp files, use default
+        preprocessor_files = glob.glob(os.path.join(models_directory, 'preprocessor_default.joblib'))
+    print(f"Found preprocessor files: {preprocessor_files}")
     
-    # Determine the correct model path
-    if os.path.exists(permanent_model_path):
-        model_path = permanent_model_path
-    elif os.path.exists(temp_model_path):
-        model_path = temp_model_path
-    else:
-        return jsonify({'error': 'Model not found'}), 404
+    latest_preprocessor_file = max(preprocessor_files, key=os.path.getctime, default=None)
+    print(f"Using preprocessor file: {latest_preprocessor_file}")
 
-    # Construct paths for the preprocessor
-    preprocessor_name = 'preprocessor.joblib'  # This could also be dynamic if necessary
-    permanent_preprocessor_path = os.path.join('model/models', preprocessor_name)
-    temp_preprocessor_path = os.path.join(current_app.config['TEMP_DIR'], preprocessor_name)
+    # Attempt to find the latest model file
+    model_files = glob.glob(os.path.join(temp_directory, f'trained_model_*.joblib'))
+    if not model_files:  # If no temp files, use default
+        model_files = glob.glob(os.path.join(models_directory, f'trained_model_default.joblib'))
+    print(f"Found model files: {model_files}")
+    
+    latest_model_file = max(model_files, key=os.path.getctime, default=None)
+    print(f"Using model file: {latest_model_file}")
 
-    # Determine the correct preprocessor path
-    if os.path.exists(permanent_preprocessor_path):
-        preprocessor_path = permanent_preprocessor_path
-    elif os.path.exists(temp_preprocessor_path):
-        preprocessor_path = temp_preprocessor_path
-    else:
-        return jsonify({'error': 'Preprocessor not found'}), 404
+    if not latest_preprocessor_file or not latest_model_file:
+        return jsonify({'error': 'Model or preprocessor not found'}), 404
 
     try:
-        # Load preprocessor and model
-        preprocessor = joblib.load(preprocessor_path)
-        model = joblib.load(model_path)
+        preprocessor = joblib.load(latest_preprocessor_file)
+        model = joblib.load(latest_model_file)
+        print("Model and preprocessor loaded successfully.")
     except Exception as e:
         return jsonify({'error': f'Error loading model or preprocessor: {str(e)}'}), 500
-    
-    
-    # Convert incoming JSON data to DataFrame
-    df = pd.DataFrame([data])
-    df.drop(columns=['model'], inplace=True)  # Remove the model entry from data
 
-    # Ensure all expected columns are present
-    expected_columns = ['carat', 'cut', 'color', 'clarity', 'depth', 'table', 'x', 'y', 'z', 'Label']
-    for col in expected_columns:
-        if col not in df.columns:
-            df[col] = np.nan  # Set missing columns to NaN or some default/derived value
-
-    # Preprocess the data using the loaded preprocessor
-    features_preprocessed = preprocessor.transform(df)
+    # Prepare the data using the preprocessor
+    X_preprocessed = preprocess_single_observation(data, latest_preprocessor_file)
+    print(f"Data after preprocessing: {X_preprocessed}")
 
     # Make predictions using the loaded model
-    prediction = model.predict(features_preprocessed)
+    prediction = model.predict(X_preprocessed)
+    print(f"Prediction result: {prediction}")
 
     # Return the prediction in JSON format
     return jsonify({'price': prediction.tolist()})  # Convert prediction array to list if necessary
+
+
+
 
 
 # @api.route('/models', methods=['GET'])
@@ -91,13 +96,13 @@ def predict():
 def models():
     # Directory where default models are stored
     default_models_dir = './model/models'
-    # List all joblib files in the default model directory
-    default_models = [f for f in os.listdir(default_models_dir) if f.endswith('.joblib')]
+    # List all joblib files in the default model directory that are not preprocessors
+    default_models = [f for f in os.listdir(default_models_dir) if f.endswith('.joblib') and 'preprocessor' not in f]
 
     # Temporary models directory, should be stored in app config or as a global
     temp_dir = current_app.config['TEMP_DIR']
-    # List all joblib files in the temporary directory
-    temp_models = [f for f in os.listdir(temp_dir) if f.endswith('.joblib')]
+    # List all joblib files in the temporary directory that are not preprocessors
+    temp_models = [f for f in os.listdir(temp_dir) if f.endswith('.joblib') and 'preprocessor' not in f]
 
     # Combine both lists
     all_models = default_models + temp_models
@@ -105,9 +110,48 @@ def models():
 
 
 
+import cProfile
+import pstats
+import io
+from line_profiler import LineProfiler
+
+def profile_retrain():
+    lp = LineProfiler()
+    lp_wrapper = lp(retrain)
+    lp_wrapper()
+    lp.print_stats()
+
+try:
+    profile  # Check if profile is already defined (e.g., by kernprof)
+except NameError:
+    def profile(func):
+        return func  # Return the function unchanged if not profiling
+
+
+# conda env setting for MLFlow
+conda_env = {
+    'name': 'mlflow-env',
+    'channels': ['defaults', 'conda-forge'],
+    'dependencies': [
+        'python=3.11.3',  # Match the Python version used
+        'scikit-learn=1.3.0',  # Match the scikit-learn version used
+        'numpy',  # Assuming numpy is a dependency; specify the version if needed
+        'pandas',  # Assuming pandas is a dependency; specify the version if needed
+        {'pip': [
+            'mlflow==2.11.3',  # Match the MLflow version used
+            'cloudpickle',  # Ensure cloudpickle is included if used for serialization
+            # Include any other pip packages that your model or preprocessor specifically needs
+        ]}
+    ]
+}
+
+
 
 @api.route('/retrain', methods=['POST'])
+@profile  # Add this decorator to the retrain function
 def retrain():
+    profiler = cProfile.Profile()
+    profiler.enable()
 
 
     print("Current working directory:", os.getcwd())
@@ -116,101 +160,38 @@ def retrain():
     details = request.get_json()
     label = details.get('label', 'New')
     proportion_factor = details.get('proportionFactor', 2)
+    n_samples = details.get('nSamples', 1500)  # Default to 150 if not provided
+
 
     # Generate and set the experiment name in MLflow
-    experiment_name = f"retrain_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") # same timestamp will tag mlflow, model and preprocessor files.
+    experiment_name = f"retrain_{timestamp}"
     mlflow.set_experiment(experiment_name)
 
-    with mlflow.start_run():
+    with mlflow.start_run() as run:
+        run_id = run.info.run_id
         mlflow.log_param("label", label)
         mlflow.log_param("proportion_factor", proportion_factor)
 
 
 
-        print("Loading existing data...")
-        # Load existing data
-        data = pd.read_csv('./data/diamonds/diamonds.csv')
-        if 'Label' not in data.columns: # Add a default label if not present
-            data['Label'] = 'Standard'
-        print(f"Original data shape: {data.shape}")
-        # Get details from request
-        details = request.get_json()
-        label = details.get('label', 'New')
-        proportion_factor = details.get('proportionFactor', 2)
-        print(f"Received details from request - Label: {label}, Proportion Factor: {proportion_factor}")
-        # Add new batch of data
-        print("Adding new batch of data...")
-        new_data = data.sample(n=100, random_state=42).reset_index(drop=True)
-        new_data['Label'] = label
-        new_data['price'] = new_data['price'] * proportion_factor
-        data = pd.concat([data, new_data]).reset_index(drop=True)
-        print(f"New data shape after adding batch: {data.shape}")
-        # Assuming file path and check for preprocessor existence
-        preprocessor_path = './model/models/default_preprocessor.joblib'
-        if os.path.exists(preprocessor_path):
-            print("Loading existing preprocessor...")
-            preprocessor = joblib.load(preprocessor_path)
-        else:
-            # Create and fit a new preprocessor if not found
-            print("Creating and fitting a new preprocessor...")
-            categorical_features = ['cut', 'color', 'clarity', 'Label']
-            numeric_features = ['carat', 'depth', 'table', 'x', 'y', 'z']
-            preprocessor = ColumnTransformer(
-                transformers=[
-                    ('num', Pipeline([
-                        ('scaler', StandardScaler())
-                    ]), numeric_features),
-                    ('cat', Pipeline([
-                        ('encoder', OneHotEncoder(handle_unknown='ignore'))
-                    ]), categorical_features)
-                ])
-            preprocessor.fit(data)
-            print("Preprocessor fitted with new data.")
-
-        # Accessing the correct pipeline and then the encoder
-        print("Accessing the categorical pipeline and encoder...")
-        cat_pipeline = preprocessor.named_transformers_['cat']
-        encoder = cat_pipeline.named_steps['encoder']
-        print("Fitting encoder with new categorical data...")
-        encoder.fit(data[['cut', 'color', 'clarity', 'Label']])
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        # Save the updated preprocessor with timestamp in filename
-        processor_file_name = f'./model/models/preprocessor_{timestamp}.joblib'
-        temp_dir = current_app.config['TEMP_DIR']
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
-        joblib.dump(preprocessor, processor_file_name)
-        print(f"Preprocessor saved as {processor_file_name}")
-
-        # Retrain the model with the updated preprocessor and data
-        print("Preparing data for model training...")
-        X = data.drop('price', axis=1)
-        y = data['price']
-        print(f"Features shape: {X.shape}, Target shape: {y.shape}")
-        print("Transforming features using the updated preprocessor...")
 
 
-        X_preprocessed = preprocessor.transform(X)
-        print(f"Transformed features shape: {X_preprocessed.shape}")
+        # Load existing data and simulate new observations
+        existing_data = pd.read_csv('./data/diamonds/diamonds.csv'); existing_data['Label'] = 'Standard'
+        new_data = simulate_new_observations(existing_data, n_samples, label, proportion_factor)
+        combined_data = pd.concat([existing_data, new_data]).reset_index(drop=True)
+
+        # Preprocess the combined dataset
+        X_preprocessed, y_preprocessed = preprocess_pipeline(combined_data, timestamp)
 
 
+        model, model_metrics, y_test, y_pred = train_and_evaluate_model(X_preprocessed, y_preprocessed)
 
+        # Log metrics (metrics = {'MSE': mse, 'RMSE': rmse, 'MAE': mae, 'R2': r2})
+        for metric_name, metric_value in model_metrics.items():
+            mlflow.log_metric(metric_name, metric_value)
 
-
-
-
-        print("Retraining model...")
-        model = SGDRegressor(random_state=42, 
-                            loss='squared_error',
-                            penalty='l1',
-                            alpha=0.001,
-                            l1_ratio=0.1,
-                            learning_rate='adaptive',
-                            max_iter=300,
-                            tol=1e-3,
-                            eta0=0.01)
-        model.fit(X_preprocessed, y)
 
         # model_path = f'./model/models/trained_model_{timestamp}.joblib'
         temp_dir = current_app.config['TEMP_DIR']
@@ -223,115 +204,94 @@ def retrain():
 
 
         # Log model and preprocessor as artifacts
-        mlflow.sklearn.log_model(model, "model", registered_model_name="DiamondPricePredictor")
+        mlflow.sklearn.log_model(
+            model, 
+            "model", 
+            registered_model_name="DiamondPricePredictor",
+            conda_env=conda_env  # Use the manually specified conda environment
+        )
         mlflow.log_artifact(model_path, "model")
-        mlflow.log_artifact(processor_file_name, "preprocessor")
     
-    return jsonify({"message": "Data added and model retrained", "modelPath": model_path, "modelName": model_path.split('/')[-1]})
+        # Save predictions to a CSV
+        predictions_path = os.path.join(temp_dir, f"predictions_{run_id}.csv")
+        pd.DataFrame({'y_test': y_test, 'y_pred': y_pred}).to_csv(predictions_path, index=False)
+        
+        # Log predictions as an artifact
+        mlflow.log_artifact(predictions_path)
+
+
+    # profiler.disable()
+    # s = io.StringIO()
+    # sortby = 'cumulative'
+    # ps = pstats.Stats(profiler, stream=s).sort_stats(sortby)
+    # ps.print_stats(20)
+    # print(s.getvalue())
+
+
+    # Return statement should be here, outside the 'with' context
+    return jsonify({
+        "message": "Data added and model retrained",
+        "modelPath": model_path,
+        "modelName": model_path.split('/')[-1],
+        "predictionsPath": predictions_path,
+        "run_id": run_id
+    })
 
 
 
-
-def get_latest_model_predictions(model_name):
-    # Directory paths
-    data_directory = './data/diamonds'
-    models_directory = './model/models'
-    print('model name:', model_name)
-    
-    # Find the latest dataset
-    latest_data_file = max([os.path.join(data_directory, f) for f in os.listdir(data_directory) if f.endswith('.csv')], key=os.path.getctime)
-    
-    # Load the latest data
-    test_data = pd.read_csv(latest_data_file)
-    y_test = test_data['price']
-    X_test = test_data.drop('price', axis=1)
-    
-    # Adjust path to use TEMP_DIR
-    temp_dir = current_app.config['TEMP_DIR']
-    model_path = os.path.join(temp_dir, model_name)
-    # model_path = os.path.join(models_directory, f'{model_name}')
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"No model found at {model_path}")
-    model = joblib.load(model_path)
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+import glob
 
 
-    # Load the default preprocessor
-    latest_processor_file = max([os.path.join(models_directory, f) for f in os.listdir(models_directory) if 'processor' in f], key=os.path.getctime)
-    print('Latest processor file:', latest_processor_file)
 
-    # preprocessor_path = os.path.join(models_directory, 'default_preprocessor.joblib')
-    # preprocessor_path = os.path.join('./src/model/models', latest_processor_file)
-    if not os.path.exists(latest_processor_file):
-        raise FileNotFoundError(f"No preprocessor found at {latest_processor_file}")
-    preprocessor = joblib.load(latest_processor_file)
-    
-
-
-    # Print details about the loaded preprocessor
-    print("Loaded preprocessor from:", latest_processor_file)
-    print(preprocessor)
-
-    # For a ColumnTransformer
-    if hasattr(preprocessor, 'transformers_'):
-        print("ColumnTransformer details:")
-        for transformer_name, transformer, columns in preprocessor.transformers_:
-            print(f"Transformer: {transformer_name}")
-            print(f" - Transformer object: {transformer}")
-            print(f" - Columns: {columns}")
-            if isinstance(transformer, Pipeline):
-                for step_name, step in transformer.named_steps.items():
-                    print(f"  - Step: {step_name}, Object: {step}")
-                    if hasattr(step, 'categories_'):
-                        print(f"    - Categories: {step.categories_}")
-
-
-    # Preprocess the features
-    print('X shape:', X_test.shape)
-    print('X columns:', X_test.columns)  ######
-
-    # X_test_preprocessed = preprocessor.transform(X_test)
-
-    # Attempt to preprocess the features
-    try:
-        X_test_preprocessed = preprocessor.transform(X_test)
-        print('X_test_preprocessed shape:', X_test_preprocessed.shape)
-    except Exception as e:
-        print("Error during preprocessing:", str(e))
-        # Additional debugging to understand what went wrong
-        if hasattr(preprocessor, 'transformers_'):
-            for transformer_name, transformer, columns in preprocessor.transformers_:
-                if isinstance(transformer, Pipeline):
-                    # Check if the pipeline includes an encoder and if it's fitted
-                    encoder = transformer.named_steps.get('encoder', None)
-                    if encoder and hasattr(encoder, 'categories_'):
-                        print(f"Encoder categories for {transformer_name}: {encoder.categories_}")
-                    else:
-                        print(f"No encoder or categories available in {transformer_name}")
-
-    
-    # Predict prices using the preprocessed features
-    y_pred = model.predict(X_test_preprocessed)
-    return y_test, y_pred
-
-
-# temp_dir = current_app.config['TEMP_DIR']
 
 
 @api.route('/plot-data', methods=['GET'])
-def plot_data():
-    model_name = request.args.get('model')
-    if not model_name:
-        return jsonify({'error': 'Model name is undefined'}), 400
+def plot_predictions():
+    run_id = request.args.get('run_id')
+    print('Run ID:', run_id)  # Log the run ID being used
 
+    if not run_id:
+        print('Run ID is undefined. Returning error.')
+        return jsonify({'error': 'Run ID is undefined'}), 400
+
+    # Use glob to find the file
+    predictions_files = glob.glob(f'./mlruns/**/predictions_{run_id}.csv', recursive=True)
+    if not predictions_files:
+        return jsonify({'error': 'Predictions file not found'}), 404
     
-    try:
-        y_test, y_pred = get_latest_model_predictions(model_name)
-        return jsonify({'actual': y_test.tolist(), 'predicted': y_pred.tolist()})
-    except Exception as e:
-        # Log here if possible
-        print(f"Error processing the prediction: {str(e)}")  # For debugging
-        return jsonify({'error': str(e)}), 500
-    
+    predictions_path = predictions_files[0]  # Assuming the first match is what we want
+    print('Predictions Path:', predictions_path)  # Log the predictions file path
+
+
+    predictions_df = pd.read_csv(predictions_path)
+    print('Predictions DataFrame:', predictions_df)  # Log the predictions DataFrame
+
+    y_test, y_pred = predictions_df['y_test'], predictions_df['y_pred']
+
+    # Generate plot
+    plt.figure(figsize=(6, 4))
+    plt.scatter(y_test, y_pred, alpha=0.3, s = 3)
+    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
+    plt.xlabel('Measured')
+    plt.ylabel('Predicted')
+    plt.title('Predicted vs. Actual Prices')
+    plt.grid(True)
+
+    # Convert plot to image file
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    buf.close()
+
+    return jsonify({'image': img_base64})
+
+
+
+
 
 
 from mlflow.tracking import MlflowClient
@@ -375,48 +335,57 @@ def get_model_info():
 
 
 
-# def save_model_predictions(model_name):
-#     # Directory paths
-#     data_directory = './data/diamonds'
-#     models_directory = './model/models'
+from flask import request, jsonify
+import requests
+import time
+import json
+
+@api.route('/test_performance', methods=['POST'])
+def test_performance():
+    data = request.get_json()  # Get JSON data from the POST request
+    endpoint = data.get('endpoint', 'predict')  # Get the endpoint from JSON, default to 'predict'
     
-#     # Find the latest dataset
-#     latest_data_file = max([os.path.join(data_directory, f) for f in os.listdir(data_directory) if f.endswith('.csv')], key=os.path.getctime)
-    
-#     # Load the latest data
-#     test_data = pd.read_csv(latest_data_file)
-#     y_test = test_data['price']
-#     X_test = test_data.drop('price', axis=1)
-    
-#     # Load the specified model
-#     model_path = os.path.join(models_directory, f'model_{model_name}.joblib')
-#     if not os.path.exists(model_path):
-#         raise FileNotFoundError(f"No model found with the name 'model_{model_name}.joblib'")
-#     model = joblib.load(model_path)
-    
-#     # Predict prices
-#     y_pred = model.predict(X_test)
-    
-#     # Save predictions along with actual prices and features
-#     results_df = pd.DataFrame(X_test)
-#     results_df['Actual Prices'] = y_test
-#     results_df['Predicted Prices'] = y_pred
-#     results_path = os.path.join(data_directory, f'predictions_{model_name}.csv')
-#     results_df.to_csv(results_path, index=False)
+    num_requests = 5
+    start_time = time.time()
 
-#     return results_path  # Return the path for additional processing or logging
+    if endpoint == 'predict':
+        url_to_test = 'http://localhost:5000/api/predict'
+        test_data = json.dumps({
+            "carat": 1,
+            "cut": "Ideal",
+            "color": "G",
+            "clarity": "SI1",
+            "depth": 62,
+            "table": 56,
+            "x": 6,
+            "y": 6,
+            "z": 4,
+            "model": "trained_model_default.joblib"
+        })
+    elif endpoint == 'retrain':
+        url_to_test = 'http://localhost:5000/api/retrain'
+        test_data = json.dumps({
+            "label": "New",
+            "proportionFactor": 2
+        })
+    else:
+        return jsonify({'error': 'Invalid endpoint specified'}), 400
 
+    headers = {'Content-type': 'application/json'}
+    responses = []
+    for _ in range(num_requests):
+        response = requests.post(url_to_test, data=test_data, headers=headers)
+        if response.status_code != 200:
+            responses.append(response.status_code)
 
+    end_time = time.time()
+    duration = end_time - start_time
+    response_time = duration / num_requests
+    throughput = num_requests / duration
 
-# def add_batch_features(data, batch_size, label, proportion_factor, save=False):
-#     new_data = data.sample(n=batch_size, random_state=42).reset_index(drop=True)
-#     new_data['Label'] = label
-#     new_data['price'] = new_data['price'] * proportion_factor
-#     data = pd.concat([data, new_data]).reset_index(drop=True)
+    return jsonify({
+        'response_time': response_time,
+        'throughput': throughput,
+        'failed_responses': responses  # Adding this to track any failed responses during the test
+    })
 
-#     if save:
-#         file_name = f'./data/diamonds/modified_{label}_{int(proportion_factor*100)}.csv'
-#         data.to_csv(file_name, index=False)
-#         print(f"Dataset saved as {file_name}")
-
-#     return data
