@@ -90,3 +90,18 @@ th, td {
     padding: 8px;
     text-align: left;
 }
+
+.dimensions-section label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.dimension-inputs {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px; /* Adjust as needed */
+}
+
+.dimension-inputs input {
+    flex: 1; /* Each input will take equal space */
+}
