@@ -25,9 +25,14 @@ The goal of this project is to develop a robust and scalable machine learning AP
 
 ### Running Locally
 
-If you'd like to run the application locally, ensure you have Docker installed, then:
+If you'd like to run the application locally, ensure you have Docker installed, git as well, then:
 
 1. Clone the repository: `git clone [repository URL]`
-2. Build the Docker image: `docker build -t diamond-price-predictor .`
-3. Run the container: `docker run -p 5000:5000 diamond-price-predictor`
-4. Access the application at `http://localhost:5000` in your browser.
+2. Navigate to the project directory: `cd repository/src`
+3. Build the Docker image: `sudo docker build -t diamond-price-predictor .`
+4. Run the container: `sudo docker run -p 5000:5000 diamond-price-predictor`
+5. Access the application at `http://localhost:5000` in your browser.
+ 
+
+ <!-- Detached mode -->
+ <!-- sudo docker run -d -p 5000:5000 diamond-price-predictor -->
