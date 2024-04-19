@@ -19,12 +19,21 @@ function predictPrice(event) {
   .catch(error => console.error('Error:', error));  
 }
 
+
+
 // Function to handle model retraining
 function retrainModel() {
+
+  let label = document.getElementById('label-input').value;
+  let proportionFactor = parseFloat(document.getElementById('proportion-factor-input').value);
+  let nSamples = parseInt(document.getElementById('sample-input').value);
+
   let data = {
-    label: 'New',
-    proportionFactor: 2
+    label: label,
+    proportionFactor: proportionFactor,
+    nSamples: nSamples
   };
+
   
   fetch('/api/retrain', {
     method: 'POST',
@@ -32,10 +41,11 @@ function retrainModel() {
     body: JSON.stringify(data)
   })
   .then(response => response.json())
-  .then(data => {
+  .then(data => {   
     alert('Model retrained successfully: ' + data.modelName);
     fetchModels();  // Refresh the model list
     fetchModelInfo(); // Refresh the model details table
+    updatePlots(data.run_id);  // Update plots with the new run_id   
   })
   .catch(error => {
     console.error('Error during retraining:', error);
@@ -46,33 +56,34 @@ function retrainModel() {
   });
 }
 
-function updatePlots(modelName) {
-  fetch(`/api/plot-data?model=${modelName}`)  // Include the model identifier in the API request
-  .then(response => {
+
+function updatePlots(runId) {
+  console.log('Fetching plot data for run ID:', runId); // Log the run ID being used
+  fetch(`/api/plot-data?run_id=${runId}`)
+    .then(response => {   
+      console.log('Received response from server'); // Log when the response is received
       if (!response.ok) {
-          throw new Error('Failed to fetch plot data');
+        throw new Error(`HTTP error! status: ${response.status}`);    
       }
       return response.json();
-  })
-  .then(data => {
-      const plotConfig = {
-          x: data.actual,
-          y: data.predicted,
-          type: 'scatter',
-          mode: 'markers',
-          marker: {color: 'blue'}
-      };
-      Plotly.newPlot('plotDiv', [plotConfig], {
-          title: 'Updated Actual vs. Predicted Prices',
-          xaxis: {title: 'Actual Prices'},
-          yaxis: {title: 'Predicted Prices'}
-      });
-  })
-  .catch(error => {
-      console.error('Error updating plots:', error);
-      alert('Error fetching new plot data.');
-  });
+    })
+    .then(data => {
+      console.log('Processing data received from server:', data); // Log the data received
+      let plotData = data.image; // Assuming the server returns a base64 encoded image
+      let img = document.createElement('img');
+      img.src = `data:image/png;base64,${plotData}`;
+      let plotDiv = document.getElementById('plotDiv');
+      plotDiv.innerHTML = ''; // Clear existing content
+      plotDiv.appendChild(img);
+      console.log('Plot image appended to the plot div.'); // Confirm the image is appended
+    })
+    .catch(error => {
+      console.error('Error updating plots:', error); // Log any errors
+      console.log('Failed to update plots for run ID:', runId);
+    });
 }
+
+
 
   // Function to fetch and display models in the dropdown
 function fetchModels() {
@@ -109,11 +120,11 @@ function fetchModelInfo() {
                   const row = document.createElement('tr');
                   row.setAttribute('data-run-id', model.run_id); // Set a data attribute for run_id
                   row.innerHTML = `
-                      <td>${model.name}</td>
                       <td>${model.version}</td>
-                      <td>${model.run_id}</td>
-                      <td>${model.status}</td>
-                      <td>${JSON.stringify(model.metrics)}</td>
+                      <td>${model.metrics.MAE.toFixed(3)}</td>
+                      <td>${model.metrics.MSE.toFixed(3)}</td>
+                      <td>${model.metrics.R2.toFixed(3)}</td>
+                      <td>${model.metrics.RMSE.toFixed(3)}</td>                      
                   `;
                   tableBody.appendChild(row);
               }
@@ -122,12 +133,37 @@ function fetchModelInfo() {
       .catch(error => console.error('Failed to fetch model information:', error));
 }
 
+
+function performTest(endpoint) {
+  axios.post('/api/test_performance', { endpoint: endpoint })
+      .then(function (response) {
+          document.getElementById('responseTime').innerText = 'Average Response Time: ' + response.data.response_time.toFixed(3) + ' seconds';
+          document.getElementById('throughput').innerText = 'Throughput: ' + response.data.throughput.toFixed(3) + ' requests/second';
+      })
+      .catch(function (error) {
+          console.error('Error during performance testing:', error);
+      });
+}
+
+
+
 // Event listeners and initial fetch calls
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function () {   ////////////
   // Attach event listeners to form and button
   document.getElementById('diamond-form').addEventListener('submit', predictPrice);
-  document.getElementById('retrainButton').addEventListener('click', retrainModel);
+  document.getElementById('retrainButton').addEventListener('click', retrainModel);   ////////////
   // Fetch initial data to populate UI components
   fetchModels();
   fetchModelInfo();
+  document.getElementById('testPredictBtn').addEventListener('click', function() {
+    performTest('predict');
+  });
+  document.getElementById('testRetrainBtn').addEventListener('click', function() {
+    performTest('retrain');
+  });
+
+  
+
+
 });
+
