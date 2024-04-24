@@ -146,7 +146,7 @@ definitions:
         default: 4
       model:
         type: "string"
-        default: "trained_sgd_model.joblib"
+        default: "trained_model_default.joblib"
   RetrainRequest:
     type: "object"
     properties:
